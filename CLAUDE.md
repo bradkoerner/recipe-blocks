@@ -2,6 +2,32 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Commands
+
+```bash
+# Start dev server (auto-reloads on save)
+pnpm dev
+
+# Run all tests
+pnpm test
+
+# Run tests in watch mode (from backend package)
+pnpm --filter @recipe-blocks/backend test:watch
+
+# Lint / format
+pnpm lint
+pnpm format
+
+# Database (requires Docker)
+docker compose up -d db       # start Postgres
+docker compose down           # stop
+
+# Migrations (run from repo root)
+pnpm --filter @recipe-blocks/backend migration:generate -- src/migrations/<MigrationName>
+pnpm --filter @recipe-blocks/backend migration:run
+pnpm --filter @recipe-blocks/backend migration:revert
+```
+
 ## Stack
 
 TypeScript, Express, TypeORM, PostgreSQL, AWS SDK v3

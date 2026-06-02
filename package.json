@@ -1,0 +1,17 @@
+{
+  "name": "recipe-blocks",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter @recipe-blocks/backend dev",
+    "test": "pnpm -r test",
+    "lint": "eslint packages/*/src",
+    "format": "prettier --write packages/*/src"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.0.0",
+    "typescript-eslint": "^8.0.0"
+  }
+}
