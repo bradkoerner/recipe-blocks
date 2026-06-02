@@ -130,7 +130,6 @@ The assembled ramen recipe's ingredient list is essentially: broth, tare, chashu
 
 ## Scope Notes
 
-- **Personal use only.** No multi-user auth required initially. No sharing, no public browsing.
 - **Authoring UX can be rough.** The priority is the cooking/execution experience — the "I'm making this tonight" view. Authoring just needs to work, not be polished.
 - **Stack TBD**, but Postgres is the right database. The graph structure is well-suited to relational with a self-referential junction table. No need for a dedicated graph DB.
 - **Frontend will be the hard part.** Rendering nested recipe trees in a usable cooking interface is the main UI challenge. Start simple.

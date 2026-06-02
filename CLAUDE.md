@@ -37,6 +37,10 @@ Recipes form a **directed acyclic graph (DAG)**. **Cycle detection must be enfor
 **`recipe_ingredients`** — the DAG edges. Each row: "this recipe needs this ingredient concept, in this quantity."
 - `canonical_recipe_id` (optional) — the specific sub-recipe the author recommends for this ingredient. Must reference a recipe that produces `ingredient_id`. **Enforced at app level, not DB level.**
 
+### Priorities
+
+Cooking/execution experience ("I'm making this tonight") is the priority. Authoring UX just needs to work. Frontend rendering of nested recipe trees in a usable cooking interface is the main UI challenge — start simple.
+
 ### Key behaviors to preserve
 
 **Ingredient substitution:** `ingredient_id` is always the anchor. `canonical_recipe_id` is a suggestion. Users can use store-bought, the canonical sub-recipe, or any other recipe that produces the ingredient concept.
