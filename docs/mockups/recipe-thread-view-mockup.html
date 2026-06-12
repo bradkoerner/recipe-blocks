@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recipe Thread View — Reference Mockup</title>
+<!--
+  Reference rendering for the Recipe App "steps as the tree" UI.
+  Companion to: Recipe App Spec.md (UI Model section).
+  Self-contained — open directly in a browser. Chevrons toggle expansion.
+
+  Key patterns demonstrated:
+  - Steps are the primary structure; refs are inline chips within step text
+  - Purple chip = ref with canonical_recipe_id (expandable)
+  - Gray pill  = ref with no canonical recipe (store-bought, swap link)
+  - Expansion inserts sub-recipe steps below the referencing step, inside an indent rail
+  - Step 4 shows multiple independent refs in one step
+  - Broth expansion shows recursion (its step 2 contains its own expandable ref)
+  - "All ingredients" collapsible at top = flattened graph traversal
+-->
+<style>
+  :root {
+    --bg: #f5f4f0;
+    --card: #ffffff;
+    --border: #e3e1db;
+    --rail: #afa9ec;
+    --rail-2: #d9d7e8;
+    --text: #1f1e1c;
+    --text-2: #6b6964;
+    --text-3: #9b988f;
+    --chip-bg: #eeedfe;
+    --chip-fg: #3c3489;
+    --pill-bg: #f0efeb;
+    --pill-fg: #6b6964;
+    --warn-bg: #faeeda;
+    --warn-fg: #854f0b;
+    --link: #3556c7;
+  }
+  body { margin: 0; padding: 24px; background: var(--bg); color: var(--text);
+         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .card { max-width: 720px; margin: 0 auto; background: var(--card); border: 1px solid var(--border);
+          border-radius: 12px; padding: 20px 24px; }
+  .hdr { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; }
+  h1 { margin: 0; font-size: 20px; font-weight: 600; }
+  .meta { margin: 4px 0 0; font-size: 13px; color: var(--text-2); }
+  .btn { font-size: 12px; padding: 5px 14px; border: 1px solid var(--border); border-radius: 8px;
+         background: var(--card); cursor: pointer; }
+  .ingbox { margin-top: 16px; border: 1px solid var(--border); border-radius: 8px; }
+  .ingbox-hd { display: flex; align-items: center; gap: 8px; padding: 8px 12px; cursor: pointer;
+               font-size: 13px; color: var(--text-2); user-select: none; }
+  .ingbox-bd { padding: 0 12px 10px 32px; font-size: 13px; line-height: 1.7; color: var(--text-2);
+               columns: 2; column-gap: 24px; }
+  .steps { margin-top: 20px; font-size: 14px; line-height: 1.7; }
+  .step { display: flex; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border); }
+  .step:first-child { border-top: none; }
+  .stepnum { font-size: 13px; font-weight: 600; color: var(--text-3); min-width: 16px; }
+  .stepbody { flex: 1; min-width: 0; }
+  .chip { cursor: pointer; padding: 1px 9px; border-radius: 10px; background: var(--chip-bg);
+          color: var(--chip-fg); font-size: 13px; white-space: nowrap; user-select: none; }
+  .chip .cv { font-size: 11px; }
+  .pill { padding: 1px 9px; border-radius: 10px; background: var(--pill-bg); color: var(--pill-fg);
+          font-size: 13px; white-space: nowrap; }
+  .badge { font-size: 11px; padding: 1px 8px; border-radius: 10px; background: var(--warn-bg); color: var(--warn-fg); }
+  .exp { border-left: 2px solid var(--rail); margin: 8px 0 4px 2px; padding: 6px 0 6px 14px; }
+  .exp.l2 { border-left-color: var(--rail-2); margin-left: 24px; padding-left: 12px;
+            font-size: 12px; color: var(--text-2); }
+  .exp-hd { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px;
+            flex-wrap: wrap; gap: 6px; }
+  .exp-hd .nm { font-weight: 600; }
+  .substep { display: flex; gap: 10px; font-size: 13px; }
+  .substep .n { color: var(--text-3); min-width: 14px; }
+  a { color: var(--link); text-decoration: none; font-size: 12px; }
+  .cv { display: inline-block; }
+</style>
+</head>
+<body>
+<div class="card">
+
+  <div class="hdr">
+    <div>
+      <h1>Tonkotsu ramen</h1>
+      <p class="meta">serves 4 · critical path 6h 15m</p>
+    </div>
+    <button class="btn">Schedule it ↗</button>
+  </div>
+
+  <div class="ingbox">
+    <div class="ingbox-hd" onclick="tg('ing')">
+      <span class="cv" id="ing-ch">▸</span>
+      All ingredients (14) — flattened from the full tree, for shopping
+    </div>
+    <div class="ingbox-bd" id="ing-body">
+      3 lb pork bones · 1 lb pork belly · 4 eggs · 4 portions noodles · 1 head garlic · 2" ginger ·
+      6 scallions · ½ cup soy sauce · ¼ cup mirin · 2 tbsp sake · 1 sheet kombu · katsuobushi ·
+      1 sheet nori · menma
+    </div>
+  </div>
+
+  <div class="steps">
+
+    <div class="step">
+      <span class="stepnum">1</span>
+      <div class="stepbody">
+        Spoon 2 tbsp
+        <span class="chip" onclick="tg('tare')">tare <span class="cv" id="tare-ch">▸</span></span>
+        into each warmed bowl.
+        <div class="exp" id="tare-body">
+          <div class="exp-hd">
+            <span class="nm">Tare · makes ½ cup · 10m</span>
+            <a href="#">open ↗</a>
+          </div>
+          <div class="substep"><span class="n">1</span><span>Simmer ½ cup soy, ¼ cup mirin, 2 tbsp sake, kombu 5 min.</span></div>
+          <div class="substep"><span class="n">2</span><span>Off heat, steep katsuobushi 5 min, strain.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <span class="stepnum">2</span>
+      <div class="stepbody">
+        Ladle in 1.5 cups hot
+        <span class="chip" onclick="tg('broth')">tonkotsu broth <span class="cv" id="broth-ch">▾</span></span>
+        per bowl, whisk to combine with tare.
+        <div class="exp" id="broth-body">
+          <div class="exp-hd">
+            <span class="nm">Tonkotsu broth · makes 1.5 qt · 6h</span>
+            <span><span class="badge">make ahead</span> &nbsp;<a href="#">open ↗</a></span>
+          </div>
+          <div class="substep"><span class="n">1</span><span>Blanch 3 lb pork bones, rinse clean.</span></div>
+          <div class="substep"><span class="n">2</span><span>Hard boil with
+            <span class="chip" onclick="tg('arom')" style="font-size:12px;">aromatics <span class="cv" id="arom-ch">▸</span></span>
+            6 hours, topping up water.</span></div>
+          <div class="exp l2" id="arom-body">
+            1 head garlic, halved · 2" ginger, smashed · 2 scallion whites — no prep beyond rough cutting, toss in whole.
+          </div>
+          <div class="substep"><span class="n">3</span><span>Strain. Should be opaque white and coat a spoon.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <span class="stepnum">3</span>
+      <div class="stepbody">
+        Add 1 portion cooked
+        <span class="pill">noodles</span>
+        per bowl, well drained.
+        <a href="#">swap</a>
+      </div>
+    </div>
+
+    <div class="step">
+      <span class="stepnum">4</span>
+      <div class="stepbody">
+        Top each bowl with 2 slices
+        <span class="chip" onclick="tg('chashu')">chashu <span class="cv" id="chashu-ch">▸</span></span>,
+        one halved
+        <span class="chip" onclick="tg('egg')">marinated egg <span class="cv" id="egg-ch">▾</span></span>,
+        sliced scallions, and nori.
+        <div class="exp" id="chashu-body">
+          <div class="exp-hd">
+            <span class="nm">Chashu pork · makes 8 slices · 3h</span>
+            <a href="#">open ↗</a>
+          </div>
+          <div class="substep"><span class="n">1</span><span>Roll and tie 1 lb pork belly; sear all sides.</span></div>
+          <div class="substep"><span class="n">2</span><span>Braise in soy/mirin/sake 3h at low simmer; chill, slice.</span></div>
+        </div>
+        <div class="exp" id="egg-body">
+          <div class="exp-hd">
+            <span class="nm">Marinated soft eggs · makes 4 · 20m + overnight</span>
+            <a href="#">open ↗</a>
+          </div>
+          <div class="substep"><span class="n">1</span><span>Boil 4 eggs 6:30, ice bath, peel.</span></div>
+          <div class="substep"><span class="n">2</span><span>Submerge overnight in
+            <span class="chip" onclick="tg('mar')" style="font-size:12px;">marinade <span class="cv" id="mar-ch">▸</span></span>,
+            weighted with a paper towel.</span></div>
+          <div class="exp l2" id="mar-body">
+            Stir 3 tbsp soy · 2 tbsp mirin · 3 tbsp water. Done.
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function tg(id) {
+  var b = document.getElementById(id + '-body');
+  var c = document.getElementById(id + '-ch');
+  if (!b) return;
+  var open = b.style.display !== 'none';
+  b.style.display = open ? 'none' : 'block';
+  if (c) c.textContent = open ? '▸' : '▾';
+}
+// Collapsed by default; broth + egg start expanded to demonstrate the pattern.
+['ing', 'tare', 'chashu', 'arom', 'mar'].forEach(function (id) {
+  var el = document.getElementById(id + '-body');
+  if (el) el.style.display = 'none';
+});
+</script>
+</body>
+</html>

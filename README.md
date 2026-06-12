@@ -1,135 +1,59 @@
-# Recipe App — Project Specification
+# Recipe Blocks
 
-## Concept
+A personal recipe management app built around the idea that recipes are made of **building blocks**, not flat lists of ingredients and instructions. Cooking involves composable components — a sauce, a marinade, a spice blend — that can be prepared separately, reused across dishes, and understood independently.
 
-A personal recipe management app built around the idea that recipes are made of **building blocks**, not flat lists of ingredients and instructions. The core insight is that cooking involves composable components — a sauce, a marinade, a spice blend — that can be prepared separately, reused across dishes, and understood independently.
+The full specification lives in [docs/Recipe App Spec.md](docs/Recipe%20App%20Spec.md). The reference UI rendering is [docs/mockups/recipe-thread-view-mockup.html](docs/mockups/recipe-thread-view-mockup.html). This README is a summary; the spec is canonical.
 
-The app solves a real friction point: the constant back-and-forth between an ingredient list and a step list while cooking. Instead, ingredients and instructions are grouped together at the component level. You see the sauce ingredients alongside the sauce instructions. You see the marinade ingredients alongside the marinade instructions. The final recipe just assembles the components.
+## UI Model: Steps as the Tree
 
----
-
-## Core Data Model
-
-### `ingredients`
-The concept of a real-world ingredient — "chili oil," "soy sauce," "garlic." This is the anchor for substitution and cross-referencing.
+A recipe is **not** an ingredient list at the top and instructions at the bottom. A recipe is an ordered list of concise steps, and ingredient/sub-recipe references appear as **expandable chips inline within step text** — structured like JSON, rendered like a Reddit thread.
 
 ```
-id
-name
+1. Spoon 2 tbsp [tare ▸] into each warmed bowl.
+2. Ladle in 1.5 cups hot [tonkotsu broth ▾] per bowl, whisk to combine.
+   │  Tonkotsu broth · makes 1.5 qt · 6h          [make ahead] [open ↗]
+   │  1. Blanch 3 lb pork bones, rinse clean.
+   │  2. Hard boil with [aromatics ▸] 6 hours, topping up water.
+   │  3. Strain. Should be opaque white and coat a spoon.
+3. Add 1 portion cooked (noodles) per bowl.        [swap]
+4. Top with 2 slices [chashu ▸], one halved [marinated egg ▸],
+   sliced scallions, and nori.
 ```
 
-### `recipes`
-Both full recipes and sub-components are stored here with the same structure. The `recipe_type` field distinguishes how they are used and surfaced.
+- Everything collapsed by default; a dish reads as ~4–6 lines at rest.
+- Expansion inserts the sub-recipe's own steps inline below the referencing step, recursively, inside an indent rail.
+- Quantities live in the referencing step's text; expansions show the sub-recipe at its natural yield.
+- "All ingredients (N)" is a single collapsible at the top, computed by flattening the ref graph.
 
-```
-id
-name
-description
-time_estimate        ← used for critical path scheduling
-recipe_type          ← varchar: component | ingredient | dish (check constraint, not a Postgres enum)
-instructions         ← scoped to this recipe/component only
-```
+## Data Model
 
-**`recipe_type` values:**
-- `component` — exists only within a parent recipe, never browsed independently (e.g., aromatics for a specific dish)
-- `ingredient` — standalone producible thing, reusable across recipes, but not something you'd eat on its own (e.g., chili oil, stocks, spice blends)
-- `dish` — self-contained recipe you'd browse when deciding what to make (e.g., Dan dan noodles, roast broccoli)
+- **`ingredients`** — real-world ingredient concepts ("chili oil", "soy sauce"). The anchor for substitution and cross-referencing.
+- **`recipes`** — dishes, reusable sub-recipes, and one-off components share one table, distinguished by `recipe_type` (`component` | `ingredient` | `dish`). No `instructions` text column — steps are structured rows. Nullable `yield_amount`/`yield_unit` for the "makes 1.5 qt" metadata line.
+- **`recipe_steps`** — ordered steps per recipe. Step text contains inline `[display text](ref:ID)` tokens.
+- **`step_refs`** — the DAG edges. `ingredient_id` and `canonical_recipe_id` both nullable (at least one set): ingredient-only refs are substitutable pills, anchored recipe refs are expandable + swappable, recipe-only refs embed component sub-recipes directly with no substitution anchor.
+- **`recipe_produces`** — junction; a recipe can produce multiple ingredient concepts.
 
-### `recipe_produces` (junction)
-Many-to-many. A recipe can produce multiple ingredient concepts. A barbecue sauce recipe might produce "barbecue sauce," "glaze," and "wing sauce."
+Recipes form a **directed acyclic graph**. Cycle detection is enforced on every write.
 
-```
-recipe_id
-ingredient_id
-```
+## Authoring
 
-### `recipe_ingredients`
-The edges of the graph. Each row says: "this recipe needs this ingredient concept, in this quantity."
-
-```
-id
-parent_recipe_id     ← the recipe being built
-ingredient_id        ← the ingredient concept required (e.g., "chili oil")
-canonical_recipe_id  ← (optional) the specific sub-recipe the author recommends
-quantity
-unit
-```
-
-**Note:** `canonical_recipe_id` should reference a recipe that produces `ingredient_id`. Enforced at the application level.
-
----
-
-## The Graph Structure
-
-Recipes form a **directed acyclic graph (DAG)**. A recipe node can depend on other recipe nodes via `recipe_ingredients.canonical_recipe_id`. This enables:
-
-- Drilling into a component recipe from within a parent recipe
-- Seeing all recipes that depend on a given component
-- Critical path scheduling (see below)
-
-**Cycle detection must be enforced on write.** If Recipe A depends on Recipe B which depends on Recipe A, the scheduler breaks.
-
----
+Write flat first, structure later. A plain numbered-step recipe is always valid. Structure arrives via **highlight-to-promote**: select a phrase in a step ("2 tbsp of peanut butter") → it becomes an ingredient ref token, parsed into quantity/unit/concept. Linking a sub-recipe can happen later or never.
 
 ## Key Behaviors
 
-### Ingredient substitution
-When a recipe calls for "chili oil," the user can:
-1. Use a store-bought product (treat it as a plain ingredient)
-2. Use the canonical sub-recipe the author linked
-3. Browse other recipes in the database that produce "chili oil"
+- **Substitution:** `ingredient_id` is the anchor; the canonical recipe is a suggestion. Store-bought, canonical, or any recipe producing the same concept all work.
+- **Critical path scheduling:** given a serve time, walk the ref graph backwards using `time_estimate` to emit start times per component. Only refs marked "make it" contribute.
 
-The `ingredient_id` is always the anchor. The canonical recipe is a suggestion, not a requirement.
+## Stack
 
-### Cross-recipe reuse
-A recipe like chili oil (`recipe_type: ingredient`) can be:
-- Made on its own and stored
-- Used as a component in Dan dan noodles, mapo tofu, etc.
-- Discovered via "recipes that use chili oil"
+TypeScript, Express, TypeORM, PostgreSQL. pnpm monorepo.
 
-### Component vs. ingredient vs. dish
-Aromatics for a specific dish are a `recipe` row with `recipe_type: component`. They have their own ingredients and instructions, which keeps the parent recipe clean, but they never surface in browsing. Chili oil is `recipe_type: ingredient` — browseable and reusable, but not something you'd eat on its own. Dan dan noodles is `recipe_type: dish` — what shows up when you're deciding what to make tonight. If a component turns out to be useful on its own, just change the type.
+```bash
+docker compose up -d db    # Postgres
+pnpm dev                   # dev server
+pnpm test                  # tests
+```
 
-### Critical path scheduling
-Given a target serve time, the app should work backwards through the dependency graph to produce a prep schedule. Each recipe node has a `time_estimate`. The scheduler resolves the dependency tree, finds the critical path, and tells the user when to start each component.
+## Scope
 
-Example for ramen:
-- Broth: 6 hours → start at 10am
-- Eggs: 20 min → start at 3:40pm
-- Tare: 10 min → start at 3:50pm
-- Noodles: 15 min → start at 3:45pm
-- Assemble: 4:00pm serve
-
----
-
-## Example: Ramen
-
-Ramen is the canonical use case for this app. A ramen recipe on a typical cooking site is one giant flat list. Here it becomes:
-
-| Component | `recipe_type` | Notes |
-|---|---|---|
-| Tonkotsu broth | ingredient | Its own project, can be made days ahead; reusable across ramen styles |
-| Tare | ingredient | Small but distinct; reusable across ramen styles |
-| Chashu pork | ingredient | Reusable in other dishes |
-| Marinated soft eggs | ingredient | Reusable topping |
-| Noodles | ingredient (if homemade) | Or just use store-bought |
-| Assembled ramen | dish | Parent recipe; components listed as ingredients with canonical links |
-
-The assembled ramen recipe's ingredient list is essentially: broth, tare, chashu, eggs, noodles, toppings. Its instructions are: combine in bowl. The complexity lives in the components.
-
----
-
-## Example: Dan Dan Noodles + Chili Oil
-
-- `chili_oil` recipe: `recipe_type: ingredient`, produces the "chili oil" ingredient concept
-- `dan_dan_noodles` recipe: has a `recipe_ingredients` row for "chili oil" with `canonical_recipe_id` pointing to the chili oil recipe
-- User making Dan Dan can drill into chili oil, see the canonical recipe, or swap in store-bought
-- User who has made chili oil can see Dan Dan noodles (and other recipes) listed as "uses chili oil"
-
----
-
-## Scope Notes
-
-- **Authoring UX can be rough.** The priority is the cooking/execution experience — the "I'm making this tonight" view. Authoring just needs to work, not be polished.
-- **Stack TBD**, but Postgres is the right database. The graph structure is well-suited to relational with a self-referential junction table. No need for a dedicated graph DB.
-- **Frontend will be the hard part.** Rendering nested recipe trees in a usable cooking interface is the main UI challenge. Start simple.
+Personal use only — no auth, no sharing. Cooking/execution experience is the priority; authoring UX can be rough, but highlight-to-promote is load-bearing for v1.
