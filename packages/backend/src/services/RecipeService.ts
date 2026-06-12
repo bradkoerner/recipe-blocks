@@ -1,6 +1,8 @@
 import type { RecipeType } from '@recipe-blocks/shared';
+import { IsNull } from 'typeorm';
 import { AppDataSource } from '../data-source';
 import { Recipe } from '../entities/Recipe';
+import { StepRef } from '../entities/StepRef';
 
 const repo = () => AppDataSource.getRepository(Recipe);
 
@@ -9,7 +11,8 @@ export type RecipeCreateInput = {
   recipe_type: RecipeType;
   description?: string | null;
   time_estimate?: number | null;
-  instructions?: string | null;
+  yield_amount?: string | null;
+  yield_unit?: string | null;
 };
 
 export type RecipeUpdateInput = Partial<RecipeCreateInput>;
@@ -27,7 +30,11 @@ export const RecipeService = {
   findById(id: string): Promise<Recipe | null> {
     return repo().findOne({
       where: { id },
-      relations: { produces: { ingredient: true }, ingredients: { ingredient: true, canonicalRecipe: true } },
+      relations: {
+        produces: { ingredient: true },
+        steps: { refs: { ingredient: true, canonicalRecipe: true } },
+      },
+      order: { steps: { position: 'ASC' } },
     });
   },
 
@@ -43,7 +50,16 @@ export const RecipeService = {
   },
 
   async remove(id: string): Promise<boolean> {
-    const result = await repo().delete(id);
-    return (result.affected ?? 0) > 0;
+    return AppDataSource.transaction(async (manager) => {
+      // Direct refs (no ingredient anchor) are meaningless without their
+      // recipe, and FK SET NULL would violate the at-least-one check —
+      // delete them; anchored refs degrade to plain pills via SET NULL.
+      await manager.delete(StepRef, {
+        canonicalRecipe: { id },
+        ingredient: IsNull(),
+      });
+      const result = await manager.delete(Recipe, id);
+      return (result.affected ?? 0) > 0;
+    });
   },
 };

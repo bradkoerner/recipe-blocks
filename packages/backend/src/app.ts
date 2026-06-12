@@ -1,7 +1,8 @@
 import express from 'express';
 import { ingredientsRouter } from './routes/ingredients';
 import { recipesRouter } from './routes/recipes';
-import { recipeIngredientsRouter } from './routes/recipeIngredients';
+import { recipeStepsRouter } from './routes/recipeSteps';
+import { stepRefsRouter } from './routes/stepRefs';
 import { recipeProducesRouter } from './routes/recipeProduces';
 
 export const app = express();
@@ -14,5 +15,6 @@ app.get('/health', (_req, res) => {
 
 app.use('/ingredients', ingredientsRouter);
 app.use('/recipes', recipesRouter);
-app.use('/recipe-ingredients', recipeIngredientsRouter);
+app.use('/recipe-steps', recipeStepsRouter);
+app.use('/step-refs', stepRefsRouter);
 app.use('/recipe-produces', recipeProducesRouter);

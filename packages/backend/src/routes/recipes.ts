@@ -24,7 +24,7 @@ recipesRouter.get('/:id', async (req, res) => {
 });
 
 recipesRouter.post('/', async (req, res) => {
-  const { name, recipe_type, description, time_estimate, instructions } =
+  const { name, recipe_type, description, time_estimate, yield_amount, yield_unit } =
     req.body as Record<string, unknown>;
 
   if (typeof name !== 'string' || !name.trim()) {
@@ -41,7 +41,8 @@ recipesRouter.post('/', async (req, res) => {
     recipe_type,
     description: typeof description === 'string' ? description : null,
     time_estimate: typeof time_estimate === 'number' ? time_estimate : null,
-    instructions: typeof instructions === 'string' ? instructions : null,
+    yield_amount: typeof yield_amount === 'string' ? yield_amount : null,
+    yield_unit: typeof yield_unit === 'string' ? yield_unit : null,
   };
 
   const recipe = await RecipeService.create(data);
@@ -49,7 +50,7 @@ recipesRouter.post('/', async (req, res) => {
 });
 
 recipesRouter.patch('/:id', async (req, res) => {
-  const { name, recipe_type, description, time_estimate, instructions } =
+  const { name, recipe_type, description, time_estimate, yield_amount, yield_unit } =
     req.body as Record<string, unknown>;
 
   const update: Record<string, unknown> = {};
@@ -70,7 +71,8 @@ recipesRouter.patch('/:id', async (req, res) => {
   }
   if (description !== undefined) update.description = typeof description === 'string' ? description : null;
   if (time_estimate !== undefined) update.time_estimate = typeof time_estimate === 'number' ? time_estimate : null;
-  if (instructions !== undefined) update.instructions = typeof instructions === 'string' ? instructions : null;
+  if (yield_amount !== undefined) update.yield_amount = typeof yield_amount === 'string' ? yield_amount : null;
+  if (yield_unit !== undefined) update.yield_unit = typeof yield_unit === 'string' ? yield_unit : null;
 
   const recipe = await RecipeService.update(req.params.id, update);
   if (!recipe) {

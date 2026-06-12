@@ -1,19 +1,18 @@
 import { AppDataSource } from '../data-source';
-import { RecipeIngredient } from '../entities/RecipeIngredient';
-import { RecipeProduce } from '../entities/RecipeProduce';
+import { StepRef } from '../entities/StepRef';
 
 // Build adjacency map: recipeId -> set of recipeIds it depends on.
-// An edge exists when a recipe_ingredient row has a canonical_recipe_id,
-// meaning parentRecipe depends on canonicalRecipe.
+// An edge exists when a step_refs row has a canonical_recipe_id, meaning
+// the step's recipe depends on canonicalRecipe.
 async function buildAdjacency(): Promise<Map<string, Set<string>>> {
-  const edges = await AppDataSource.getRepository(RecipeIngredient).find({
-    relations: { parentRecipe: true, canonicalRecipe: true },
+  const edges = await AppDataSource.getRepository(StepRef).find({
+    relations: { step: { recipe: true }, canonicalRecipe: true },
   });
 
   const adj = new Map<string, Set<string>>();
   for (const edge of edges) {
     if (!edge.canonicalRecipe) continue;
-    const from = edge.parentRecipe.id;
+    const from = edge.step.recipe.id;
     const to = edge.canonicalRecipe.id;
     if (!adj.has(from)) adj.set(from, new Set());
     adj.get(from)!.add(to);
@@ -40,20 +39,7 @@ function isReachable(adj: Map<string, Set<string>>, start: string, target: strin
 // Returns true if adding edge (from -> to) would create a cycle.
 // A cycle exists if `from` is already reachable from `to`.
 export async function wouldCreateCycle(fromRecipeId: string, toRecipeId: string): Promise<boolean> {
+  if (fromRecipeId === toRecipeId) return true;
   const adj = await buildAdjacency();
   return isReachable(adj, toRecipeId, fromRecipeId);
-}
-
-// Same check but for a recipe_produces link: recipe now "produces" an ingredient,
-// which could be used by another recipe. We check if any recipe that uses this
-// ingredient via canonical_recipe_id would create a cycle back to `recipeId`.
-export async function canonicalRecipeProducesIngredient(
-  recipeId: string,
-  ingredientId: string,
-): Promise<boolean> {
-  const count = await AppDataSource.getRepository(RecipeProduce).countBy({
-    recipe_id: recipeId,
-    ingredient_id: ingredientId,
-  });
-  return count > 0;
 }

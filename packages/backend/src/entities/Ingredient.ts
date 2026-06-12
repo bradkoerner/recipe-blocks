@@ -1,6 +1,6 @@
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
-import { RecipeIngredient } from './RecipeIngredient';
 import { RecipeProduce } from './RecipeProduce';
+import { StepRef } from './StepRef';
 
 @Entity('ingredients')
 export class Ingredient {
@@ -13,6 +13,6 @@ export class Ingredient {
   @OneToMany(() => RecipeProduce, (rp) => rp.ingredient)
   producedBy: RecipeProduce[];
 
-  @OneToMany(() => RecipeIngredient, (ri) => ri.ingredient)
-  usedIn: RecipeIngredient[];
+  @OneToMany(() => StepRef, (sr) => sr.ingredient)
+  usedIn: StepRef[];
 }
